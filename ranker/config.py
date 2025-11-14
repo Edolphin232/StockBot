@@ -16,6 +16,6 @@ NEGATIVE_TEXT = "The stock is expected to fall sharply"
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
 # Default lookback window for company news (in days)
-NEWS_LOOKBACK_DAYS = int(os.getenv("NEWS_LOOKBACK_DAYS", "7"))
+NEWS_LOOKBACK_DAYS = int(os.getenv("NEWS_LOOKBACK_DAYS", "2"))
 # Maximum number of articles to consider per ticker
-NEWS_MAX_ARTICLES = int(os.getenv("NEWS_MAX_ARTICLES", "50"))
+NEWS_MAX_ARTICLES = int(os.getenv("NEWS_MAX_ARTICLES", "15"))

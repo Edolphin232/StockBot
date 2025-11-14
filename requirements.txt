@@ -9,3 +9,5 @@ transformers
 finnhub-python
 pandas
 pytz
+tqdm>=4.66.0
+yfinance>=0.2.44
