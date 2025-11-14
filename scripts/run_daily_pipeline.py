@@ -69,7 +69,6 @@ def main():
     cmd2 = [
         sys.executable,
         os.path.join(CURRENT_DIR, "augment_csv_with_yf.py"),
-        "--csv", out_csv,
         "--period", args.period,
         "--interval", args.interval,
     ]

@@ -11,3 +11,4 @@ pandas
 pytz
 tqdm>=4.66.0
 yfinance>=0.2.44
+alpaca-py>=0.23.0

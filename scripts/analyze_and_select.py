@@ -206,17 +206,29 @@ def main():
     parser.add_argument("--out-full", default=None, help="Path to write full analysis TSV (default: <input>_analysis.tsv).")
     parser.add_argument("--out-top", default=None, help="Path to write top/bottom selection TSV (default: <input>_topbottom.tsv).")
     # Intraday-friendly defaults: focus on a wider selection, recent news, few articles
-    parser.add_argument("--top", type=int, default=20, help="Number of top and bottom to keep.")
+    parser.add_argument("--top", type=int, default=10, help="Number of top and bottom to keep (default: 10).")
     parser.add_argument("--days", type=int, default=1, help="News lookback window in days (default: 1).")
     parser.add_argument("--max-articles", type=int, default=8, help="Max news articles per symbol (default: 8).")
     # Use a proper flag; do NOT use type=bool which treats any non-empty string as True
     parser.add_argument("--news", action="store_true", help="Fetch news for selected top/bottom.")
+    parser.add_argument(
+        "--min-volume-ratio",
+        type=float,
+        default=0.1,
+        help="Minimum prev/avg volume ratio for selection (top/bottom only; default: 0.1).",
+    )
     args = parser.parse_args()
 
     csv_path = _default_premarket_csv_path()
     df = pd.read_csv(csv_path)
     if df.empty or "symbol" not in df.columns:
         raise RuntimeError("Input CSV must contain a 'symbol' column.")
+
+    # Compute volume ratio for reference; do NOT filter the full dataset
+    if "prev_volume_1d" in df.columns and "avg_volume_20d" in df.columns:
+        avg = pd.to_numeric(df["avg_volume_20d"], errors="coerce").replace(0, np.nan)
+        prev = pd.to_numeric(df["prev_volume_1d"], errors="coerce")
+        df["volume_ratio"] = prev / avg
 
     # 1) Compute scores for all (no news yet)
     df["signal_score"] = df.apply(calculate_signal_score, axis=1)
@@ -237,10 +249,13 @@ def main():
         return "Strong Sell"
     df["signal_label"] = df["signal_score"].apply(label)
 
-    # 2) Select top and bottom N by score
+    # 2) Select top and bottom N by score (apply volume-ratio trim only to selection)
     sorted_all = df.sort_values("signal_score", ascending=False).reset_index(drop=True)
-    top_sel = sorted_all.head(args.top).copy()
-    bot_sel = sorted_all.tail(args.top).copy()
+    base = sorted_all
+    if "volume_ratio" in base.columns and args.min_volume_ratio is not None and np.isfinite(args.min_volume_ratio):
+        base = base[base["volume_ratio"] >= float(args.min_volume_ratio)]
+    top_sel = base.head(args.top).copy()
+    bot_sel = base.tail(args.top).copy()
     selected = pd.concat([top_sel, bot_sel], ignore_index=True)
 
     # 3) Fetch news only for selected symbols if --news flag is present
