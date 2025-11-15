@@ -37,6 +37,9 @@ def calc_premarket_metrics(df):
             "pm_trend_slope_pct_per_hour","pm_pullback_depth_pct"
         ]}
 
+    # Work on a copy to avoid pandas SettingWithCopyWarning when df is a slice
+    df = df.copy()
+
     o = df["open"].iloc[0]
     c = df["close"].iloc[-1]
     h = df["high"].max()

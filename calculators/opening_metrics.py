@@ -14,6 +14,9 @@ def calc_opening_metrics(df, premarket_vwap):
     if df is None or df.empty:
         return M
 
+    # Work on a copy to avoid pandas SettingWithCopyWarning when df is a slice
+    df = df.copy()
+
     o = df.iloc[0].open
     c = df.iloc[-1].close
 
