@@ -1,0 +1,71 @@
+I am writing an options recommending algorithm that takes premarket data as well as 9:30-10:00 data to make a decision on what options to buy at 10:15AM.
+
+I plan on getting the following metrics, from a mix of yahoo finance and alpaca API:
+
+Premarket Structure
+
+premarket_pct_change
+
+premarket_range_pct
+
+premarket_last_price
+
+premarket_high
+
+premarket_low
+
+premarket_vwap
+
+distance_from_premarket_vwap_pct (9:20 and 9:30)
+
+pm_trend_slope_pct_per_hour
+
+pm_pullback_depth_pct
+
+Volume
+
+premarket_volume_60m
+
+relative_volume_20d
+
+opening_volume_spike_factor
+
+Opening (9:30–10:00)
+
+price_930
+
+price_1000
+
+move_930_to_1000_pct
+
+opening_range_high
+
+opening_range_low
+
+opening_vwap_930_1000
+
+price_1000_vs_orb
+
+price_1000_vs_opening_vwap
+
+price_1000_vs_premarket_vwap
+
+rsi_1min_at_1000
+
+macd_hist_5m_at_1000
+
+higher_highs_9_30_to_10_00
+
+higher_lows_9_30_to_10_00
+
+Market Alignment
+
+etf_SPY_premarket_pct_change
+
+etf_QQQ_premarket_pct_change
+
+correlation_with_spy / beta
+
+IV metrics
+Daily RSI / SMA20/50
+ATR14
