@@ -23,6 +23,8 @@ import yfinance as yf
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 
+from sunday_report.earnings import fetch_and_score_earnings
+
 
 # -----------------------------
 # Setup
@@ -36,54 +38,9 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
 TE_KEY = os.getenv("TE_API_KEY")
-FINNHUB_KEY = os.getenv("FINNHUB_API_KEY")
-FINNHUB_BASE = "https://finnhub.io/api/v1"
 
-# -----------------------------
-# Finnhub
-# -----------------------------
-def finnhub_get(endpoint, params=None):
-    params = params or {}
-    params["token"] = FINNHUB_KEY
-    r = requests.get(FINNHUB_BASE + endpoint, params=params, timeout=10)
-    r.raise_for_status()
-    return r.json()
-
-def fetch_earnings(start_date, end_date):
-    if not FINNHUB_KEY:
-        log.warning("FINNHUB_API_KEY not set")
-        return pd.DataFrame()
-
-    data = finnhub_get("/calendar/earnings", {
-        "from": str(start_date),
-        "to": str(end_date)
-    })
-
-    cal = data.get("earningsCalendar", [])
-    if not cal:
-        return pd.DataFrame()
-
-    df = pd.DataFrame(cal)
-    df = df.drop_duplicates("symbol")
-
-    df["revenueEstimate"] = pd.to_numeric(df["revenueEstimate"], errors="coerce").fillna(0)
-    df = df[df["revenueEstimate"] > 20_000_000_000]
-
-    if df.empty:
-        return pd.DataFrame()
-
-    df["ImpactScore"] = np.log10(df["revenueEstimate"] + 1)
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-
-    out = df[["symbol", "date", "hour", "revenueEstimate", "ImpactScore"]].rename(columns={
-        "symbol": "Ticker",
-        "date": "Date",
-        "hour": "Time",
-        "revenueEstimate": "RevenueEst"
-    })
-
-    out["Date"] = out["Date"].dt.strftime("%Y-%m-%d")
-    return out.sort_values(["Date", "ImpactScore"], ascending=[True, False])
+# Alias so existing callers of fetch_earnings() still work
+fetch_earnings = fetch_and_score_earnings
 
 def filter_earnings_for_window(df, start_date, end_date):
     if df is None or df.empty:

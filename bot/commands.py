@@ -255,7 +255,7 @@ async def handle_earnings(message: discord.Message, args: list):
     Usage:
         !earnings                    - Full weekly report (default)
         !earnings YYYY-MM-DD         - Report for specific date
-        !earnings TICKER             - Next earnings date for ticker
+        !earnings TICKER             - Next earnings + EPS history + implied move for any ticker
         !earnings {int}              - Earnings with ImpactScore >= {int}
     Sends report to the channel where the command was issued.
     """
@@ -344,43 +344,33 @@ async def handle_earnings(message: discord.Message, args: list):
             except ValueError:
                 # Not a date either - treat as ticker
                 ticker = arg
-                await message.channel.send(f"🔍 Searching for next earnings date for {ticker}...")
-                
-                # Fetch earnings for next 90 days
-                start_date = date.today()
-                end_date = start_date + timedelta(days=90)
-                earnings_all = fetch_earnings(start_date, end_date)
-                
-                if earnings_all.empty:
-                    await message.channel.send(f"❌ No earnings data available")
+                await message.channel.send(f"🔍 Looking up earnings for **{ticker}**...")
+
+                from sunday_report.next_earnings import fetch_next_earnings
+                info = fetch_next_earnings(ticker)
+
+                if info is None:
+                    await message.channel.send(f"❌ No upcoming earnings found for **{ticker}**")
                     return
-                
-                # Filter by ticker
-                ticker_earnings = earnings_all[earnings_all["Ticker"].str.upper() == ticker.upper()]
-                
-                if ticker_earnings.empty:
-                    await message.channel.send(f"❌ No upcoming earnings found for {ticker}")
-                    return
-                
-                # Get the next (earliest) earnings date
-                ticker_earnings = ticker_earnings.sort_values("Date")
-                next_earnings = ticker_earnings.iloc[0]
-                
-                date_str = next_earnings['Date']
-                time_str = next_earnings.get('Time', '')
-                revenue = next_earnings['RevenueEst'] / 1e9
-                impact = next_earnings['ImpactScore']
-                
+
                 embed = discord.Embed(
-                    title=f"📅 Next Earnings: {ticker}",
+                    title=f"📅 Next Earnings: {info['ticker']}",
                     color=discord.Color.green()
                 )
-                embed.add_field(name="Date", value=date_str, inline=True)
-                if time_str:
-                    embed.add_field(name="Time", value=time_str, inline=True)
-                embed.add_field(name="Revenue Est", value=f"${revenue:.0f}B", inline=True)
-                embed.add_field(name="Impact Score", value=f"{impact:.2f}", inline=True)
-                
+                embed.add_field(name="Date", value=info["date"], inline=True)
+                embed.add_field(name="Session", value=info["session"], inline=True)
+
+                if info["eps_estimate"] is not None:
+                    embed.add_field(name="EPS Estimate", value=f"{info['eps_estimate']:.2f}", inline=True)
+
+                if info["beat_count"] is not None:
+                    beat_str = f"{info['beat_count']}/{info['total_quarters']}  avg {info['avg_beat_pct']:+.1f}%"
+                    embed.add_field(name="Beat History", value=beat_str, inline=True)
+
+                if info["implied_move_pct"] is not None:
+                    move_str = f"±${info['implied_move_dollar']}  ({info['implied_move_pct']:.1f}%)"
+                    embed.add_field(name="Implied Move", value=move_str, inline=True)
+
                 await message.channel.send(embed=embed)
                 return
             
