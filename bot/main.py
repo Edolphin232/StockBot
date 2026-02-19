@@ -168,19 +168,40 @@ async def job_orb():
             print(f"[{state.get('date', 'unknown')}] ORB: store is None")
             return
         
-        bars = state["store"].get_day_bars(state["date"])
-        if bars.empty:
-            error_msg = f"⚠️ **ORB Warning** — No bars available yet for {state['date']}. Need at least 30 minutes of data for ORB calculation."
-            await send_message(error_msg)
-            print(f"[{state['date']}] ORB: bars are empty")
-            return
+        # Retry logic: wait for enough bars (need 30 bars = 9:30 to 10:00)
+        max_retries = 3
+        retry_delay = 30  # seconds
+        bars = None
         
-        # Check if we have enough bars for ORB (need at least 30 minutes = 30 bars)
-        if len(bars) < 30:
-            error_msg = f"⚠️ **ORB Warning** — Only {len(bars)} bars available for {state['date']}. Need at least 30 bars (30 minutes) for ORB calculation."
-            await send_message(error_msg)
-            print(f"[{state['date']}] ORB: not enough bars ({len(bars)} < 30)")
-            return
+        for attempt in range(max_retries):
+            bars = state["store"].get_day_bars(state["date"])
+            if bars.empty:
+                if attempt < max_retries - 1:
+                    print(f"[{state['date']}] ORB: bars empty, waiting {retry_delay}s (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(retry_delay)
+                    await refresh_store()  # Refresh data
+                    continue
+                else:
+                    error_msg = f"⚠️ **ORB Warning** — No bars available yet for {state['date']}. Need at least 30 minutes of data for ORB calculation."
+                    await send_message(error_msg)
+                    print(f"[{state['date']}] ORB: bars are empty after {max_retries} attempts")
+                    return
+            
+            # Check if we have enough bars for ORB (need at least 30 minutes = 30 bars)
+            if len(bars) < 30:
+                if attempt < max_retries - 1:
+                    print(f"[{state['date']}] ORB: only {len(bars)} bars available, waiting {retry_delay}s for more data (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(retry_delay)
+                    await refresh_store()  # Refresh data
+                    continue
+                else:
+                    error_msg = f"⚠️ **ORB Warning** — Only {len(bars)} bars available for {state['date']} after {max_retries} attempts. Need at least 30 bars (30 minutes) for ORB calculation."
+                    await send_message(error_msg)
+                    print(f"[{state['date']}] ORB: not enough bars ({len(bars)} < 30) after {max_retries} attempts")
+                    return
+            
+            # We have enough bars, break out of retry loop
+            break
 
         orb_range, orb_result = run_orb_scan(state["store"], state["date"])
         if orb_range and orb_result:

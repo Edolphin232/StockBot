@@ -251,38 +251,141 @@ async def simulate_technical_signals(
 
 async def handle_earnings(message: discord.Message, args: list):
     """
-    Handle !earnings command - manually trigger Sunday report.
-    Usage: !earnings [YYYY-MM-DD] (optional date, defaults to today)
+    Handle !earnings command - manually trigger Sunday report or lookup earnings.
+    Usage:
+        !earnings                    - Full weekly report (default)
+        !earnings YYYY-MM-DD         - Report for specific date
+        !earnings TICKER             - Next earnings date for ticker
+        !earnings {int}              - Earnings with ImpactScore >= {int}
     Sends report to the channel where the command was issued.
     """
-    await message.channel.send("📊 Generating weekly risk report...")
-    
     try:
+        from sunday_report.sunday_report import fetch_earnings, filter_earnings_for_window
         from sunday_report.sunday_report import generate_sunday_report, create_sunday_report_embed, format_for_discord
+        from datetime import date, timedelta
         
-        # Parse optional date argument
-        target_date = args[0] if args else None
-        if target_date:
-            try:
-                datetime.strptime(target_date, "%Y-%m-%d")
-            except ValueError:
-                await message.channel.send("❌ Invalid date format. Use `YYYY-MM-DD`")
+        if not args:
+            # No arguments - full weekly report
+            await message.channel.send("📊 Generating weekly risk report...")
+            macro, earnings, dashboard = generate_sunday_report(None)
+            embed = create_sunday_report_embed(macro, earnings, dashboard)
+            if embed:
+                await message.channel.send(embed=embed)
+                await message.channel.send("✅ Weekly report sent!")
+            else:
+                text = format_for_discord(macro, earnings, dashboard)
+                await message.channel.send(text)
+                await message.channel.send("✅ Weekly report sent!")
+            return
+        
+        arg = args[0].upper().strip()
+        
+        # Check if argument is an integer (ImpactScore threshold)
+        try:
+            impact_threshold = int(arg)
+            await message.channel.send(f"🔍 Searching for earnings with ImpactScore >= {impact_threshold}...")
+            
+            # Fetch earnings for next 90 days
+            start_date = date.today()
+            end_date = start_date + timedelta(days=90)
+            earnings_all = fetch_earnings(start_date, end_date)
+            
+            if earnings_all.empty:
+                await message.channel.send(f"❌ No earnings data available")
                 return
-        
-        # Generate report
-        macro, earnings, dashboard = generate_sunday_report(target_date)
-        
-        # Create and send embed to the channel where command was issued
-        embed = create_sunday_report_embed(macro, earnings, dashboard)
-        if embed:
+            
+            # Filter by ImpactScore
+            filtered = earnings_all[earnings_all["ImpactScore"] >= impact_threshold]
+            
+            if filtered.empty:
+                await message.channel.send(f"❌ No earnings found with ImpactScore >= {impact_threshold}")
+                return
+            
+            # Create embed for filtered earnings
+            embed = discord.Embed(
+                title=f"💣 Earnings (ImpactScore >= {impact_threshold})",
+                color=discord.Color.blue()
+            )
+            
+            earnings_text = []
+            for _, r in filtered.head(20).iterrows():  # Limit to top 20
+                ticker = r['Ticker']
+                date_str = r['Date']
+                time_str = r.get('Time', '')
+                revenue = r['RevenueEst'] / 1e9
+                impact = r['ImpactScore']
+                earnings_text.append(f"• {ticker} — {date_str} ({time_str}) — ${revenue:.0f}B (Score: {impact:.2f})")
+            
+            embed.add_field(
+                name=f"Found {len(filtered)} earnings",
+                value="\n".join(earnings_text) if earnings_text else "None",
+                inline=False
+            )
+            
             await message.channel.send(embed=embed)
-            await message.channel.send("✅ Weekly report sent!")
-        else:
-            # Fallback to plain text
-            text = format_for_discord(macro, earnings, dashboard)
-            await message.channel.send(text)
-            await message.channel.send("✅ Weekly report sent!")
+            return
+        
+        except ValueError:
+            # Not an integer, check if it's a date
+            try:
+                datetime.strptime(arg, "%Y-%m-%d")
+                # It's a date - generate report for that date
+                await message.channel.send("📊 Generating weekly risk report...")
+                macro, earnings, dashboard = generate_sunday_report(arg)
+                embed = create_sunday_report_embed(macro, earnings, dashboard)
+                if embed:
+                    await message.channel.send(embed=embed)
+                    await message.channel.send("✅ Weekly report sent!")
+                else:
+                    text = format_for_discord(macro, earnings, dashboard)
+                    await message.channel.send(text)
+                    await message.channel.send("✅ Weekly report sent!")
+                return
+            except ValueError:
+                # Not a date either - treat as ticker
+                ticker = arg
+                await message.channel.send(f"🔍 Searching for next earnings date for {ticker}...")
+                
+                # Fetch earnings for next 90 days
+                start_date = date.today()
+                end_date = start_date + timedelta(days=90)
+                earnings_all = fetch_earnings(start_date, end_date)
+                
+                if earnings_all.empty:
+                    await message.channel.send(f"❌ No earnings data available")
+                    return
+                
+                # Filter by ticker
+                ticker_earnings = earnings_all[earnings_all["Ticker"].str.upper() == ticker.upper()]
+                
+                if ticker_earnings.empty:
+                    await message.channel.send(f"❌ No upcoming earnings found for {ticker}")
+                    return
+                
+                # Get the next (earliest) earnings date
+                ticker_earnings = ticker_earnings.sort_values("Date")
+                next_earnings = ticker_earnings.iloc[0]
+                
+                date_str = next_earnings['Date']
+                time_str = next_earnings.get('Time', '')
+                revenue = next_earnings['RevenueEst'] / 1e9
+                impact = next_earnings['ImpactScore']
+                
+                embed = discord.Embed(
+                    title=f"📅 Next Earnings: {ticker}",
+                    color=discord.Color.green()
+                )
+                embed.add_field(name="Date", value=date_str, inline=True)
+                if time_str:
+                    embed.add_field(name="Time", value=time_str, inline=True)
+                embed.add_field(name="Revenue Est", value=f"${revenue:.0f}B", inline=True)
+                embed.add_field(name="Impact Score", value=f"{impact:.2f}", inline=True)
+                
+                await message.channel.send(embed=embed)
+                return
             
     except Exception as e:
-        await message.channel.send(f"❌ Error generating report: {e}")
+        await message.channel.send(f"❌ Error: {e}")
         print(f"[!earnings] Error: {e}")
+        import traceback
+        traceback.print_exc()
