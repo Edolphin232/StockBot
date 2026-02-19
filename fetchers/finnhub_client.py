@@ -14,7 +14,7 @@ BASE = "https://finnhub.io/api/v1"
 def _get(endpoint: str, params: Optional[dict] = None) -> dict:
     p = dict(params or {})
     p["token"] = API_KEY
-    r = requests.get(BASE + endpoint, params=p, timeout=10)
+    r = requests.get(BASE + endpoint, params=p, timeout=30)
     r.raise_for_status()
     return r.json()
 
