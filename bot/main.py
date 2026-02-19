@@ -95,9 +95,15 @@ async def refresh_store():
     """Reload bars from Alpaca — called every minute."""
     store, date, prev_close, vix = get_today_store()
     
-    # Reset sent signals if date changed
-    if state["date"] != date:
+    # Reset daily state if date changed
+    if state["date"] != date and state["date"] is not None:
         state["sent_signals"] = set()
+        state["signal_fired"] = False
+        state["technical_signals_active"] = False
+        state["premarket_done"] = False
+        state["orb_done"] = False
+        state["orb_range"] = None
+        print(f"[State] Date changed from {state['date']} to {date}, resetting daily flags")
     
     state["store"]      = store
     state["date"]       = date
@@ -139,8 +145,8 @@ async def job_orb():
 
 
 async def job_scan_loop():
-    """10:00 AM → 12:00 PM — scan every minute for signal."""
-    await wait_until(time(10, 0))
+    """9:50 AM → 12:00 PM — scan every minute for signal."""
+    await wait_until(time(9, 50))
 
     while True:
         now = datetime.now(EASTERN)
