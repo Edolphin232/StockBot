@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stock-bot"
+version = "0.0.0"
+requires-python = ">=3.10"
+
+# Keep dependency management in requirements.txt for now.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fetchers*", "calculators*", "testing*"]
+

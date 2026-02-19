@@ -1,107 +1,63 @@
+# fetchers/yfinance_client.py
 import yfinance as yf
 import pandas as pd
 
 
-def normalize_daily_df(df):
+VALID_INTERVALS = ["1m", "2m", "5m", "15m", "30m", "60m", "1d", "1wk", "1mo"]
+
+
+def fetch_bars(
+    symbol: str,
+    start: str,
+    end: str,
+    interval: str = "1d",
+) -> pd.DataFrame:
     """
-    Fixes yfinance's inconsistent daily OHLCV structure.
-    Output:
-        index = datetime
-        columns = open, high, low, close, volume (lowercase)
-    Returns empty DataFrame if unusable.
+    Fetch OHLCV bars from Yahoo Finance.
+
+    Args:
+        symbol:   Ticker string e.g. "SPY", "^VIX", "AAPL"
+        start:    "YYYY-MM-DD"
+        end:      "YYYY-MM-DD"
+        interval: Bar size — one of 1m, 5m, 15m, 30m, 60m, 1d, 1wk, 1mo
+
+    Returns:
+        DataFrame with lowercase columns: open, high, low, close, volume
+        Empty DataFrame on failure.
+
+    Notes:
+        - yfinance only supports intraday data for the last 60 days
+        - 1m data is limited to the last 7 days
     """
+    if interval not in VALID_INTERVALS:
+        raise ValueError(f"Invalid interval '{interval}'. Choose from: {VALID_INTERVALS}")
 
-    if df is None or len(df) == 0:
-        return pd.DataFrame()
-
-    # ------------------------------------------------------------------
-    # CASE 1 — MultiIndex columns (batch download)
-    # ------------------------------------------------------------------
-    if isinstance(df.columns, pd.MultiIndex):
-        # flatten ('AAPL','Close') -> 'close'
-        df.columns = [c[-1].lower() for c in df.columns]
-    else:
-        # CASE 2 — Single-level: normalize to lowercase
-        df.columns = [str(c).lower() for c in df.columns]
-
-    # ------------------------------------------------------------------
-    # CASE 3 — If "close" missing, use "adj close"
-    # ------------------------------------------------------------------
-    if "close" not in df.columns:
-        if "adj close" in df.columns:
-            df["close"] = df["adj close"]
-        else:
-            # unusable data
-            return pd.DataFrame()
-
-    # ------------------------------------------------------------------
-    # Filter to our expected columns
-    # ------------------------------------------------------------------
-    expected = ["open", "high", "low", "close", "volume"]
-    available = [c for c in expected if c in df.columns]
-    df = df[available]
-
-    # ------------------------------------------------------------------
-    # Drop rows with no data
-    # ------------------------------------------------------------------
-    df = df.dropna(how="all")
-
-    return df
-
-
-def fetch_daily_history(symbol):
-    """
-    Fetch daily OHLCV for single ticker.
-    Ensures output format is normalized by calling normalize_daily_df().
-    """
     try:
         df = yf.download(
             symbol,
-            period="90d",
-            interval="1d",
+            start=start,
+            end=end,
+            interval=interval,
             auto_adjust=True,
             progress=False
         )
     except Exception as e:
-        print(f"[YFIN ERROR] {symbol} {e}")
+        print(f"[YF ERROR] {symbol} — {e}")
         return pd.DataFrame()
 
-    return normalize_daily_df(df)
+    if df.empty:
+        print(f"[YF WARNING] No data returned for {symbol} {start} → {end}")
+        return pd.DataFrame()
 
+    # Flatten MultiIndex columns if present
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [c[0].lower() for c in df.columns]
+    else:
+        df.columns = [str(c).lower() for c in df.columns]
 
-def fetch_daily_history_batch(symbols):
-    """
-    Batch download daily OHLCV for all tickers in one request.
-    Returns a dict:
-        { "AAPL": df, "MSFT": df, ... }
-    Each df is normalized via normalize_daily_df().
-    """
-    if not symbols:
-        return {}
+    # Keep only standard OHLCV columns that exist
+    expected = ["open", "high", "low", "close", "volume"]
+    df = df[[c for c in expected if c in df.columns]]
+    df = df.dropna(how="all")
 
-    try:
-        df = yf.download(
-            " ".join(symbols),
-            period="90d",
-            interval="1d",
-            auto_adjust=True,
-            group_by="ticker",
-            progress=False
-        )
-    except Exception as e:
-        print(f"[YFIN BATCH ERROR] {e}")
-        return {}
-
-    results = {}
-
-    # daily_df[ticker] => its OHLC
-    for sym in symbols:
-        if sym not in df.columns.levels[0]:
-            results[sym] = pd.DataFrame()
-            continue
-
-        sub = df[sym]
-        sub = normalize_daily_df(sub)
-        results[sym] = sub
-
-    return results
+    return df

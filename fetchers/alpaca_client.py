@@ -18,15 +18,38 @@ ALPACA_SECRET = os.getenv("ALPACA_API_SECRET")
 
 client = StockHistoricalDataClient(ALPACA_KEY, ALPACA_SECRET)
 
+# Convenient mapping so callers can pass a string like "1min", "5min", "1hour", "1day"
+TIMEFRAME_MAP = {
+    "1min":   TimeFrame(1,  TimeFrameUnit.Minute),
+    "2min":   TimeFrame(2,  TimeFrameUnit.Minute),
+    "5min":   TimeFrame(5,  TimeFrameUnit.Minute),
+    "15min":  TimeFrame(15, TimeFrameUnit.Minute),
+    "30min":  TimeFrame(30, TimeFrameUnit.Minute),
+    "1hour":  TimeFrame(1,  TimeFrameUnit.Hour),
+    "2hour":  TimeFrame(2,  TimeFrameUnit.Hour),
+    "4hour":  TimeFrame(4,  TimeFrameUnit.Hour),
+    "1day":   TimeFrame(1,  TimeFrameUnit.Day),
+    "1week":  TimeFrame(1,  TimeFrameUnit.Week),
+    "1month": TimeFrame(1,  TimeFrameUnit.Month),
+}
 
 def to_eastern(dt):
     return EASTERN.localize(dt).astimezone(EASTERN)
 
-
-def fetch_bars(symbols, start_dt, end_dt):
+def fetch_bars(symbols, start_dt, end_dt, timeframe="1min", feed="iex"):
     """
-    Batch-fetch IEX minute bars for 1 or multiple symbols.
-    Returns a multi-index dataframe: (symbol, timestamp)
+    Batch-fetch bars for 1 or multiple symbols.
+    
+    Args:
+        symbols:    str or list of str
+        start_dt:   tz-aware datetime
+        end_dt:     tz-aware datetime
+        timeframe:  string key from TIMEFRAME_MAP (e.g. "5min", "1hour", "1day")
+                    OR a raw TimeFrame object if you need custom intervals
+        feed:       "iex" (free) or "sip" (paid)
+    
+    Returns:
+        Multi-index DataFrame (symbol, timestamp) or empty DataFrame on failure
     """
     if client is None:
         return None
@@ -34,12 +57,22 @@ def fetch_bars(symbols, start_dt, end_dt):
     if isinstance(symbols, str):
         symbols = [symbols]
 
+    # Accept either a string shorthand or a raw TimeFrame object
+    if isinstance(timeframe, str):
+        if timeframe not in TIMEFRAME_MAP:
+            raise ValueError(f"Unknown timeframe '{timeframe}'. Choose from: {list(TIMEFRAME_MAP.keys())}")
+        tf = TIMEFRAME_MAP[timeframe]
+    elif isinstance(timeframe, TimeFrame):
+        tf = timeframe
+    else:
+        raise TypeError("timeframe must be a string key or a TimeFrame object")
+
     req = StockBarsRequest(
         symbol_or_symbols=symbols,
-        timeframe=TimeFrame(1, TimeFrameUnit.Minute),
+        timeframe=tf,
         start=start_dt.astimezone(pytz.UTC),
         end=end_dt.astimezone(pytz.UTC),
-        feed="iex"
+        feed=feed
     )
 
     try:
@@ -47,18 +80,13 @@ def fetch_bars(symbols, start_dt, end_dt):
         if df.empty:
             return df
 
-        # Convert timezone only
-        # When using the Alpaca .df helper, the index is a MultiIndex:
-        #   (symbol, timestamp)
-        # and only the timestamp level is tz-aware. tz_convert() on a
-        # MultiIndex must specify which level holds datetimes.
         if isinstance(df.index, pd.MultiIndex):
-            # Alpaca names the datetime level "timestamp"
             df = df.tz_convert(EASTERN, level="timestamp")
         else:
             df = df.tz_convert(EASTERN)
 
         return df
+
     except Exception as e:
         print(f"[Alpaca ERROR] {e}")
         return pd.DataFrame()
