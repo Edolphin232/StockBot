@@ -66,7 +66,7 @@ class DataStore:
     def get_vix(self, date: str) -> Optional[float]:
         if self._vix_bars.empty:
             return None
-        mask = self._vix_bars.index.get_level_values("timestamp").date.astype(str) == str(date)
+        mask = self._vix_bars.index == str(date)
         day = self._vix_bars[mask]
         if day.empty:
             return None

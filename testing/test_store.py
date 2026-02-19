@@ -23,8 +23,8 @@ def setup() -> DataStore:
     """Fetch real data once, reuse across all tests."""
     print("Fetching data from Alpaca...")
     store = DataStore()
-    store.load_spy(fetch_bars("SPY", START, END, timeframe="1min"))
-    store.load_vix(yf_fetch("VIXY", START, END, timeframe="1day"))
+    store.load_spy(fetch_bars("SPY", START, END, timeframe="1m"))
+    store.load_vix(yf_fetch("^VIX", START, END, timeframe="1d"))
     print("Done.\n")
     return store
 

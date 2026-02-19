@@ -1,0 +1,16 @@
+[Unit]
+Description=Stock Bot
+After=network.target
+
+[Service]
+Type=simple
+User=edward
+WorkingDirectory=/home/edward/Documents/Project/stonk/StockBot
+Environment=PYTHONPATH=/home/edward/Documents/Project/stonk/StockBot
+EnvironmentFile=/home/edward/Documents/Project/stonk/StockBot/.env
+ExecStart=/home/edward/miniconda3/envs/stonk/bin/python3 bot/main.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

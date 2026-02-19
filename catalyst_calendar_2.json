@@ -1,0 +1,130 @@
+{
+    "_metadata": {
+      "description": "2026 US Economic Catalyst Calendar for SPY 0DTE Trading Strategy",
+      "sources": [
+        "Federal Reserve FOMC Calendar (federalreserve.gov)",
+        "White House OMB Schedule of Principal Federal Economic Indicators 2026",
+        "Bureau of Labor Statistics Release Schedule 2026",
+        "Bureau of Economic Analysis Release Schedule 2026"
+      ],
+      "last_updated": "2026-02-13",
+      "notes": [
+        "FOMC decision dates are the 2nd day of each 2-day meeting (announcement at 2:00 PM ET)",
+        "BLS releases (CPI, NFP, PPI) are at 8:30 AM ET",
+        "BEA releases (GDP, PCE) are at 8:30 AM ET unless noted",
+        "Some early 2026 dates were rescheduled due to the 2025 government shutdown",
+        "Dates marked with * include Summary of Economic Projections (FOMC) or are advance estimates (GDP)"
+      ]
+    },
+    "events": [
+      {"date": "2026-01-09", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-01-13", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-01-14", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-01-28", "event": "FOMC Rate Decision", "category": "fed", "impact": "high"},
+      {"date": "2026-01-29", "event": "GDP Advance Estimate Q4 2025", "category": "growth", "impact": "high"},
+      {"date": "2026-01-29", "event": "PCE Price Index (Dec 2025)", "category": "inflation", "impact": "high"},
+      {"date": "2026-01-30", "event": "Employment Cost Index", "category": "employment", "impact": "medium"},
+  
+      {"date": "2026-02-05", "event": "Productivity and Costs Q4 2025", "category": "growth", "impact": "medium"},
+      {"date": "2026-02-06", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-02-11", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-02-12", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-02-20", "event": "GDP Advance Estimate Q4 2025 (rescheduled)", "category": "growth", "impact": "high"},
+      {"date": "2026-02-20", "event": "PCE Price Index (Dec 2025 rescheduled)", "category": "inflation", "impact": "high"},
+      {"date": "2026-02-26", "event": "GDP Second Estimate Q4 2025", "category": "growth", "impact": "medium"},
+      {"date": "2026-02-26", "event": "PCE Price Index (Jan 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-03-05", "event": "Productivity and Costs Q4 2025 Revised", "category": "growth", "impact": "medium"},
+      {"date": "2026-03-06", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-03-11", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-03-12", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-03-18", "event": "FOMC Rate Decision *", "category": "fed", "impact": "high"},
+      {"date": "2026-03-27", "event": "GDP Third Estimate Q4 2025", "category": "growth", "impact": "medium"},
+      {"date": "2026-03-27", "event": "PCE Price Index (Feb 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-04-03", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-04-10", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-04-14", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-04-29", "event": "FOMC Rate Decision", "category": "fed", "impact": "high"},
+      {"date": "2026-04-30", "event": "GDP Advance Estimate Q1 2026 *", "category": "growth", "impact": "high"},
+      {"date": "2026-04-30", "event": "PCE Price Index (Mar 2026)", "category": "inflation", "impact": "high"},
+      {"date": "2026-04-30", "event": "Employment Cost Index", "category": "employment", "impact": "medium"},
+  
+      {"date": "2026-05-07", "event": "Productivity and Costs Q1 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-05-08", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-05-12", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-05-13", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-05-28", "event": "GDP Second Estimate Q1 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-05-28", "event": "PCE Price Index (Apr 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-06-04", "event": "Productivity and Costs Q1 2026 Revised", "category": "growth", "impact": "medium"},
+      {"date": "2026-06-05", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-06-10", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-06-11", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-06-17", "event": "FOMC Rate Decision *", "category": "fed", "impact": "high"},
+      {"date": "2026-06-25", "event": "GDP Third Estimate Q1 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-06-25", "event": "PCE Price Index (May 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-07-02", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-07-14", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-07-15", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-07-29", "event": "FOMC Rate Decision", "category": "fed", "impact": "high"},
+      {"date": "2026-07-30", "event": "GDP Advance Estimate Q2 2026 *", "category": "growth", "impact": "high"},
+      {"date": "2026-07-30", "event": "PCE Price Index (Jun 2026)", "category": "inflation", "impact": "high"},
+      {"date": "2026-07-31", "event": "Employment Cost Index", "category": "employment", "impact": "medium"},
+  
+      {"date": "2026-08-06", "event": "Productivity and Costs Q2 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-08-07", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-08-12", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-08-13", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-08-26", "event": "GDP Second Estimate Q2 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-08-26", "event": "PCE Price Index (Jul 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-09-03", "event": "Productivity and Costs Q2 2026 Revised", "category": "growth", "impact": "medium"},
+      {"date": "2026-09-04", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-09-11", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-09-10", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-09-16", "event": "FOMC Rate Decision *", "category": "fed", "impact": "high"},
+      {"date": "2026-09-30", "event": "GDP Third Estimate Q2 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-09-30", "event": "PCE Price Index (Aug 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-10-02", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-10-14", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-10-15", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-10-28", "event": "FOMC Rate Decision", "category": "fed", "impact": "high"},
+      {"date": "2026-10-29", "event": "GDP Advance Estimate Q3 2026 *", "category": "growth", "impact": "high"},
+      {"date": "2026-10-29", "event": "PCE Price Index (Sep 2026)", "category": "inflation", "impact": "high"},
+      {"date": "2026-10-30", "event": "Employment Cost Index", "category": "employment", "impact": "medium"},
+  
+      {"date": "2026-11-05", "event": "Productivity and Costs Q3 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-11-06", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-11-10", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-11-13", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-11-25", "event": "GDP Second Estimate Q3 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-11-25", "event": "PCE Price Index (Oct 2026)", "category": "inflation", "impact": "high"},
+  
+      {"date": "2026-12-04", "event": "NFP Jobs Report", "category": "employment", "impact": "high"},
+      {"date": "2026-12-08", "event": "Productivity and Costs Q3 2026 Revised", "category": "growth", "impact": "medium"},
+      {"date": "2026-12-09", "event": "FOMC Rate Decision *", "category": "fed", "impact": "high"},
+      {"date": "2026-12-10", "event": "CPI", "category": "inflation", "impact": "high"},
+      {"date": "2026-12-15", "event": "PPI", "category": "inflation", "impact": "medium"},
+      {"date": "2026-12-23", "event": "GDP Third Estimate Q3 2026", "category": "growth", "impact": "medium"},
+      {"date": "2026-12-23", "event": "PCE Price Index (Nov 2026)", "category": "inflation", "impact": "high"}
+    ],
+    "summary": {
+      "total_events": 88,
+      "high_impact_count": 64,
+      "categories": {
+        "fed": "8 FOMC decisions (4 with SEP/dot plot: Mar, Jun, Sep, Dec)",
+        "inflation": "12 CPI + 12 PPI + 12 PCE = 36 inflation releases",
+        "employment": "12 NFP + 4 ECI = 16 employment releases",
+        "growth": "12 GDP estimates + 6 productivity = 18 growth releases"
+      },
+      "highest_impact_dates": [
+        "Days with FOMC + other data are especially volatile",
+        "CPI days consistently produce the largest intraday SPY moves",
+        "NFP first-Friday mornings are high-conviction trend day candidates",
+        "GDP advance estimates (quarterly) often set the trend for the day"
+      ]
+    }
+  }

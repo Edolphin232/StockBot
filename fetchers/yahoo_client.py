@@ -10,7 +10,7 @@ def fetch_bars(
     symbol: str,
     start: str,
     end: str,
-    interval: str = "1d",
+    timeframe: str = "1d",
 ) -> pd.DataFrame:
     """
     Fetch OHLCV bars from Yahoo Finance.
@@ -29,15 +29,15 @@ def fetch_bars(
         - yfinance only supports intraday data for the last 60 days
         - 1m data is limited to the last 7 days
     """
-    if interval not in VALID_INTERVALS:
-        raise ValueError(f"Invalid interval '{interval}'. Choose from: {VALID_INTERVALS}")
+    if timeframe not in VALID_INTERVALS:
+        raise ValueError(f"Invalid interval '{timeframe}'. Choose from: {VALID_INTERVALS}")
 
     try:
         df = yf.download(
             symbol,
             start=start,
             end=end,
-            interval=interval,
+            interval=timeframe,
             auto_adjust=True,
             progress=False
         )

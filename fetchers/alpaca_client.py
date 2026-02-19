@@ -18,25 +18,25 @@ ALPACA_SECRET = os.getenv("ALPACA_API_SECRET")
 
 client = StockHistoricalDataClient(ALPACA_KEY, ALPACA_SECRET)
 
-# Convenient mapping so callers can pass a string like "1min", "5min", "1hour", "1day"
+# Convenient mapping so callers can pass a string like "1m", "5m", "1h", "1d"
 TIMEFRAME_MAP = {
-    "1min":   TimeFrame(1,  TimeFrameUnit.Minute),
-    "2min":   TimeFrame(2,  TimeFrameUnit.Minute),
-    "5min":   TimeFrame(5,  TimeFrameUnit.Minute),
-    "15min":  TimeFrame(15, TimeFrameUnit.Minute),
-    "30min":  TimeFrame(30, TimeFrameUnit.Minute),
-    "1hour":  TimeFrame(1,  TimeFrameUnit.Hour),
-    "2hour":  TimeFrame(2,  TimeFrameUnit.Hour),
-    "4hour":  TimeFrame(4,  TimeFrameUnit.Hour),
-    "1day":   TimeFrame(1,  TimeFrameUnit.Day),
-    "1week":  TimeFrame(1,  TimeFrameUnit.Week),
-    "1month": TimeFrame(1,  TimeFrameUnit.Month),
+    "1m":   TimeFrame(1,  TimeFrameUnit.Minute),
+    "2m":   TimeFrame(2,  TimeFrameUnit.Minute),
+    "5m":   TimeFrame(5,  TimeFrameUnit.Minute),
+    "15m":  TimeFrame(15, TimeFrameUnit.Minute),
+    "30m":  TimeFrame(30, TimeFrameUnit.Minute),
+    "1h":  TimeFrame(1,  TimeFrameUnit.Hour),
+    "2h":  TimeFrame(2,  TimeFrameUnit.Hour),
+    "4h":  TimeFrame(4,  TimeFrameUnit.Hour),
+    "1d":   TimeFrame(1,  TimeFrameUnit.Day),
+    "1wk":  TimeFrame(1,  TimeFrameUnit.Week),
+    "1mo": TimeFrame(1,  TimeFrameUnit.Month),
 }
 
 def to_eastern(dt):
     return EASTERN.localize(dt).astimezone(EASTERN)
 
-def fetch_bars(symbols, start_dt, end_dt, timeframe="1min", feed="iex"):
+def fetch_bars(symbols, start_dt, end_dt, timeframe="1m", feed="iex"):
     """
     Batch-fetch bars for 1 or multiple symbols.
     

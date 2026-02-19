@@ -1,0 +1,322 @@
+[
+  {
+    "date": "2026-01-28",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-03-18",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-04-29",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-06-17",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-07-29",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-09-16",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-10-28",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-12-09",
+    "event": "FOMC Rate Decision",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-02-13",
+    "event": "CPI Report (Jan data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-03-11",
+    "event": "CPI Report (Feb data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-04-10",
+    "event": "CPI Report (Mar data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-05-12",
+    "event": "CPI Report (Apr data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-06-10",
+    "event": "CPI Report (May data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-07-14",
+    "event": "CPI Report (Jun data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-08-12",
+    "event": "CPI Report (Jul data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-09-11",
+    "event": "CPI Report (Aug data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-10-14",
+    "event": "CPI Report (Sep data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-11-10",
+    "event": "CPI Report (Oct data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-12-10",
+    "event": "CPI Report (Nov data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-02-11",
+    "event": "Nonfarm Payrolls (Jan data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-03-06",
+    "event": "Nonfarm Payrolls (Feb data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-04-03",
+    "event": "Nonfarm Payrolls (Mar data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-05-08",
+    "event": "Nonfarm Payrolls (Apr data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-06-05",
+    "event": "Nonfarm Payrolls (May data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-07-02",
+    "event": "Nonfarm Payrolls (Jun data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-08-07",
+    "event": "Nonfarm Payrolls (Jul data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-09-04",
+    "event": "Nonfarm Payrolls (Aug data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-10-02",
+    "event": "Nonfarm Payrolls (Sep data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-11-06",
+    "event": "Nonfarm Payrolls (Oct data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-12-04",
+    "event": "Nonfarm Payrolls (Nov data)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-01-14",
+    "event": "PPI Report (Nov 2025 data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-01-30",
+    "event": "PPI Report (Dec 2025 data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-02-27",
+    "event": "PPI Report (Jan data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-03-12",
+    "event": "PPI Report (Feb data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-04-14",
+    "event": "PPI Report (Mar data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-05-13",
+    "event": "PPI Report (Apr data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-06-11",
+    "event": "PPI Report (May data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-07-15",
+    "event": "PPI Report (Jun data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-08-13",
+    "event": "PPI Report (Jul data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-09-10",
+    "event": "PPI Report (Aug data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-10-15",
+    "event": "PPI Report (Sep data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-11-13",
+    "event": "PPI Report (Oct data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-12-15",
+    "event": "PPI Report (Nov data)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-02-20",
+    "event": "GDP Advance Q4 2025 (rescheduled from Jan 29)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-04-30",
+    "event": "GDP (Advance Q1)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-05-28",
+    "event": "GDP (Second Q1)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-06-25",
+    "event": "GDP (Third Q1)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-07-30",
+    "event": "GDP (Advance Q2)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-08-26",
+    "event": "GDP (Second Q2)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-09-30",
+    "event": "GDP (Third Q2)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-10-29",
+    "event": "GDP (Advance Q3)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-11-25",
+    "event": "GDP (Second Q3)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-12-23",
+    "event": "GDP (Third Q3)",
+    "impact": "MEDIUM"
+  },
+  {
+    "date": "2026-02-20",
+    "event": "PCE Price Index (Dec 2025, rescheduled)",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-03-27",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-04-30",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-05-28",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-06-25",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-07-30",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-08-26",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-09-30",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-10-29",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-11-25",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  },
+  {
+    "date": "2026-12-23",
+    "event": "PCE Price Index",
+    "impact": "HIGH"
+  }
+]
