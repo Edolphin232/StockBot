@@ -10,6 +10,7 @@ from datetime import datetime, time
 from data.store import DataStore
 from fetchers.alpaca_client import fetch_bars as alpaca_fetch
 from fetchers.yahoo_client import fetch_bars as yf_fetch
+from fetchers.catalyst_client import fetch_catalysts
 from filters.premarket_filter import run_premarket_filter
 from calculators.orb import calculate_opening_range, detect_breakout
 from strategy.signal_generator import generate_signal
@@ -135,15 +136,20 @@ async def handle_testspy(message: discord.Message, args: list):
 
     # 1. Premarket
     current_open = float(bars.iloc[0]["open"])
+    
+    # Fetch catalysts for this date
+    catalyst_events = fetch_catalysts(target_date=date_str)
+    
     premarket = run_premarket_filter(
         current_open=current_open,
         prev_close=prev_close,
         vix_level=vix or 0.0,
         date=date_str,
+        catalyst_events=catalyst_events,
     )
     await message.channel.send(embed=premarket_embed(date_str, premarket, vix or 0.0))
 
-    # 2. ORB
+    # 2. ORB (10:00)
     orb_range  = calculate_opening_range(bars)
     orb_result = detect_breakout(bars, orb_range) if orb_range else None
     if orb_range and orb_result:
@@ -151,12 +157,13 @@ async def handle_testspy(message: discord.Message, args: list):
     else:
         await message.channel.send("⚠️ Could not compute ORB for this date.")
 
-    # 3. Full signal
+    # 3. Full signal (9:50-12:00 scan)
     signal = generate_signal(
         date=date_str,
         bars=bars,
         prev_close=prev_close,
         vix_level=vix or 0.0,
+        catalyst_events=catalyst_events,
     )
 
     if signal.triggered:
@@ -240,3 +247,42 @@ async def simulate_technical_signals(
                 embed = technical_signal_embed(tech_signal)
                 await message.channel.send(embed=embed)
                 sent_signals.add(signal_key)
+
+
+async def handle_earnings(message: discord.Message, args: list):
+    """
+    Handle !earnings command - manually trigger Sunday report.
+    Usage: !earnings [YYYY-MM-DD] (optional date, defaults to today)
+    """
+    await message.channel.send("📊 Generating weekly risk report...")
+    
+    try:
+        from sunday_report.sunday_report import generate_sunday_report, create_sunday_report_embed, format_for_discord
+        from bot.discord_client import send_message as send_discord_message
+        
+        # Parse optional date argument
+        target_date = args[0] if args else None
+        if target_date:
+            try:
+                datetime.strptime(target_date, "%Y-%m-%d")
+            except ValueError:
+                await message.channel.send("❌ Invalid date format. Use `YYYY-MM-DD`")
+                return
+        
+        # Generate report
+        macro, earnings, dashboard = generate_sunday_report(target_date)
+        
+        # Create and send embed
+        embed = create_sunday_report_embed(macro, earnings, dashboard)
+        if embed:
+            await send_discord_message(embed=embed)
+            await message.channel.send("✅ Weekly report sent!")
+        else:
+            # Fallback to plain text
+            text = format_for_discord(macro, earnings, dashboard)
+            await send_discord_message(text)
+            await message.channel.send("✅ Weekly report sent!")
+            
+    except Exception as e:
+        await message.channel.send(f"❌ Error generating report: {e}")
+        print(f"[!earnings] Error: {e}")

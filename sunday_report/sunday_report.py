@@ -171,11 +171,138 @@ def format_for_discord(macro, earnings, dashboard):
         for _,r in earnings.iterrows():
             lines.append(f"• {r['Ticker']} — {r['Date']} ({r.get('Time','')}) — ${r['RevenueEst']/1e9:.0f}B")
 
-    vix = dashboard[dashboard.Asset=="VIX"].iloc[0]
-    lines.append(f"\n📈 **VIX:** {vix['Last']:.2f}")
-    lines.append("\n🧠 **Regime:** Earnings + Macro → High-vol directional")
-
     return "\n".join(lines)
+
+
+def create_sunday_report_embed(macro, earnings, dashboard):
+    """
+    Create a Discord embed for the Sunday weekly risk report.
+    Returns discord.Embed or None if discord is not available.
+    """
+    try:
+        import discord
+    except ImportError:
+        log.error("discord.py not installed")
+        return None
+    
+    embed = discord.Embed(
+        title="📅 Weekly Market Risk Report",
+        color=discord.Color.blue()
+    )
+    
+    # Macro Catalysts
+    if macro.empty:
+        embed.add_field(
+            name="🧭 Macro Catalysts",
+            value="None → Earnings dominate",
+            inline=False
+        )
+    else:
+        macro_text = []
+        for _, r in macro.head(6).iterrows():
+            date_str = r.get('date', '')
+            time_str = r.get('time', '')
+            event_str = r.get('event', '')
+            macro_text.append(f"• {date_str} {time_str} — {event_str}")
+        
+        embed.add_field(
+            name="🧭 Macro Catalysts",
+            value="\n".join(macro_text) if macro_text else "None",
+            inline=False
+        )
+    
+    # Top Earnings
+    earnings_text = []
+    if earnings.empty:
+        earnings_text.append("• _(none this week)_")
+    else:
+        for _, r in earnings.iterrows():
+            ticker = r['Ticker']
+            date = r['Date']
+            time_str = r.get('Time', '')
+            revenue = r['RevenueEst'] / 1e9
+            earnings_text.append(f"• {ticker} — {date} ({time_str}) — ${revenue:.0f}B")
+    
+    embed.add_field(
+        name="💣 Top Earnings",
+        value="\n".join(earnings_text),
+        inline=False
+    )
+    
+    return embed
+
+
+async def send_sunday_report_to_discord(macro, earnings, dashboard):
+    """
+    Send the Sunday report to Discord using the bot's client.
+    """
+    try:
+        import discord
+        import asyncio
+    except ImportError:
+        log.error("discord.py not installed")
+        return False
+    
+    DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+    DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
+    
+    if not DISCORD_TOKEN or not DISCORD_CHANNEL_ID:
+        log.error("DISCORD_TOKEN or DISCORD_CHANNEL_ID not set")
+        return False
+    
+    try:
+        channel_id = int(DISCORD_CHANNEL_ID)
+    except ValueError:
+        log.error(f"Invalid DISCORD_CHANNEL_ID: {DISCORD_CHANNEL_ID}")
+        return False
+    
+    # Create a temporary client for sending the message
+    intents = discord.Intents.default()
+    client = discord.Client(intents=intents)
+    
+    message_sent = False
+    
+    @client.event
+    async def on_ready():
+        nonlocal message_sent
+        try:
+            channel = client.get_channel(channel_id)
+            if channel is None:
+                log.error(f"Channel {channel_id} not found")
+                await client.close()
+                return
+            
+            # Create and send embed
+            embed = create_sunday_report_embed(macro, earnings, dashboard)
+            if embed:
+                await channel.send(embed=embed)
+                log.info("Sunday report sent to Discord")
+            else:
+                # Fallback to plain text
+                text = format_for_discord(macro, earnings, dashboard)
+                await channel.send(text)
+                log.info("Sunday report sent to Discord (plain text)")
+            
+            message_sent = True
+            await client.close()
+        except Exception as e:
+            log.error(f"Error sending Sunday report: {e}")
+            try:
+                await client.close()
+            except:
+                pass
+    
+    try:
+        # Start client (async call that runs until client.close() is called)
+        await client.start(DISCORD_TOKEN)
+        return message_sent
+    except Exception as e:
+        log.error(f"Failed to connect to Discord: {e}")
+        try:
+            await client.close()
+        except:
+            pass
+        return False
 
 
 # -----------------------------
@@ -263,6 +390,65 @@ def fetch_fomc_calendar_from_fed(start_date, end_date):
 
 
 # -----------------------------
+# Report Generation
+# -----------------------------
+def generate_sunday_report(target_date: str = None) -> tuple:
+    """
+    Generate the Sunday report data.
+    
+    Args:
+        target_date: Optional "YYYY-MM-DD" string. If None, uses today's date.
+    
+    Returns:
+        Tuple of (macro, earnings, dashboard) DataFrames
+    """
+    start = datetime.strptime(target_date,"%Y-%m-%d").date() if target_date else datetime.now(timezone.utc).date()
+    end = start + timedelta(days=7)
+
+    earnings_all = fetch_earnings(start,end)
+    earnings = filter_earnings_for_window(earnings_all,start,end)
+
+    # Use the same catalyst fetcher as the bot
+    from fetchers.catalyst_client import fetch_catalysts
+    
+    # Fetch catalysts for the next 7 days
+    catalyst_events = fetch_catalysts(days_ahead=7)
+    
+    # Convert catalyst events to DataFrame format matching the old structure
+    macro_rows = []
+    for event in catalyst_events:
+        event_date = event.get("date", "")
+        event_name = event.get("event", "")
+        # Catalyst events don't have time, so we'll leave it empty or use a default
+        macro_rows.append({
+            "date": event_date,
+            "time": "",  # Catalyst calendar doesn't include time
+            "event": event_name,
+            "importance": 3 if event.get("impact", "").lower() == "high" else 2
+        })
+    
+    macro = pd.DataFrame(macro_rows) if macro_rows else pd.DataFrame()
+    
+    # Also fetch FOMC schedule and merge
+    lookback = start - timedelta(days=7)
+    fed_schedule = fetch_fomc_calendar_from_fed(lookback, end)
+    if not fed_schedule.empty:
+        fed_schedule["importance"] = 3
+        if macro.empty:
+            macro = fed_schedule
+        else:
+            macro = pd.concat([macro, fed_schedule], ignore_index=True)
+    
+    # Sort by date
+    if not macro.empty:
+        macro = macro.sort_values("date")
+    
+    dashboard = fetch_yahoo_dashboard()
+
+    return macro, earnings, dashboard
+
+
+# -----------------------------
 # Main
 # -----------------------------
 def main():
@@ -270,26 +456,22 @@ def main():
     parser.add_argument("--date",default=None)
     args=parser.parse_args()
 
-    start = datetime.strptime(args.date,"%Y-%m-%d").date() if args.date else datetime.now(timezone.utc).date()
-    end = start + timedelta(days=7)
-    lookback = start - timedelta(days=7)
-
-    earnings_all = fetch_earnings(start,end)
-    earnings = filter_earnings_for_window(earnings_all,start,end)
-
-    fed_schedule = fetch_fomc_calendar_from_fed(lookback, end)
-
-    macro = filter_big_macro(fetch_macro_calendar(lookback.isoformat(), end.isoformat()))
-
-    
-    if not fed_schedule.empty:
-        fed_schedule["importance"] = 3
-        macro = pd.concat([macro, fed_schedule], ignore_index=True)
-
-    dashboard = fetch_yahoo_dashboard()
+    macro, earnings, dashboard = generate_sunday_report(args.date)
 
     print("\n=== DISCORD MESSAGE ===\n")
     print(format_for_discord(macro,earnings,dashboard))
+    
+    # Send to Discord
+    import asyncio
+    try:
+        success = asyncio.run(send_sunday_report_to_discord(macro, earnings, dashboard))
+        if success:
+            print("\n✅ Sunday report sent to Discord")
+        else:
+            print("\n❌ Failed to send Sunday report to Discord")
+    except Exception as e:
+        log.error(f"Error sending to Discord: {e}")
+        print(f"\n❌ Error sending to Discord: {e}")
 
 if __name__=="__main__":
     main()

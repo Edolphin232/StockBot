@@ -86,7 +86,7 @@ def detect_ma20_cross(bars: pd.DataFrame, ma20: pd.Series) -> Optional[Technical
 
 def find_support_resistance_levels(
     bars: pd.DataFrame,
-    prev_close: float,
+    prev_close: Optional[float],
     orb_range: Optional[object] = None,
     lookback_bars: int = 60
 ) -> dict:
@@ -166,7 +166,7 @@ def find_support_resistance_levels(
 
 def check_support_resistance_breaks(
     bars: pd.DataFrame,
-    prev_close: float,
+    prev_close: Optional[float],
     orb_range: Optional[object] = None,
     tolerance: float = 0.1  # Price must break by at least this amount
 ) -> list[TechnicalSignal]:
@@ -185,8 +185,8 @@ def check_support_resistance_breaks(
     signals = []
     
     # Check resistance breaks (bullish)
+    # Price broke above resistance (was at or below, now above)
     for resistance in levels["resistance_levels"]:
-        # Price broke above resistance
         if prev_price <= resistance and current_price > resistance + tolerance:
             signals.append(TechnicalSignal(
                 signal_type="resistance_break",
@@ -198,8 +198,8 @@ def check_support_resistance_breaks(
             ))
     
     # Check support breaks (bearish)
+    # Price broke below support (was at or above, now below)
     for support in levels["support_levels"]:
-        # Price broke below support
         if prev_price >= support and current_price < support - tolerance:
             signals.append(TechnicalSignal(
                 signal_type="support_break",
@@ -235,6 +235,9 @@ def check_all_signals(
         ma20_signal = detect_ma20_cross(bars, ma20)
         if ma20_signal:
             signals.append(ma20_signal)
+    elif len(bars) < 20:
+        # Not enough bars for MA20 yet
+        pass
     
     # Check support/resistance breaks
     break_signals = check_support_resistance_breaks(bars, prev_close, orb_range)

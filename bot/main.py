@@ -6,7 +6,7 @@ import asyncio
 import pytz
 import discord
 import os
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -21,7 +21,7 @@ from bot.scanner import (
     run_orb_scan,
     run_signal_scan,
 )
-from bot.commands import handle_testspy
+from bot.commands import handle_testspy, handle_earnings
 from strategy.technical_signals import check_all_signals, TechnicalSignal
 
 EASTERN = pytz.timezone("US/Eastern")
@@ -53,6 +53,10 @@ async def on_message(message: discord.Message):
         args = message.content.split()[1:]
         print(f"[Discord] Handling !testspy command with args: {args}")
         await handle_testspy(message, args)
+    elif message.content.startswith("!earnings"):
+        args = message.content.split()[1:]
+        print(f"[Discord] Handling !earnings command with args: {args}")
+        await handle_earnings(message, args)
 
 async def wait_until(target: time):
     """Sleep until a specific Eastern time today."""
@@ -62,6 +66,29 @@ async def wait_until(target: time):
         return  # already past
     delta = (target_dt - now).total_seconds()
     await asyncio.sleep(delta)
+
+
+async def wait_until_next_weekday(target_weekday: int, target_time: time):
+    """
+    Wait until the next occurrence of a specific weekday and time.
+    
+    Args:
+        target_weekday: 0=Monday, 6=Sunday
+        target_time: time object (e.g., time(20, 0) for 8:00 PM)
+    """
+    now = datetime.now(EASTERN)
+    days_ahead = target_weekday - now.weekday()
+    
+    # If today is the target weekday but time has passed, or if target is earlier in week
+    if days_ahead < 0 or (days_ahead == 0 and now.time() >= target_time):
+        days_ahead += 7  # Move to next week
+    
+    target_date = now.date() + timedelta(days=days_ahead)
+    target_dt = EASTERN.localize(datetime.combine(target_date, target_time))
+    
+    delta = (target_dt - now).total_seconds()
+    if delta > 0:
+        await asyncio.sleep(delta)
 
 
 async def refresh_store():
@@ -149,6 +176,12 @@ async def job_scan_loop():
                 # Stop monitoring after 12:00 PM
                 state["technical_signals_active"] = False
                 print(f"[{state['date']}] Technical signal monitoring stopped (12:00 PM)")
+        else:
+            # Debug: log why technical signals aren't being checked
+            if state.get("signal_fired", False):
+                print(f"[{state['date']}] Signal fired but technical_signals_active is False")
+            else:
+                print(f"[{state['date']}] No signal fired yet, skipping technical signal check")
 
         await asyncio.sleep(60)
 
@@ -156,17 +189,28 @@ async def job_scan_loop():
 async def check_technical_signals():
     """Check for technical signals and send notifications."""
     if state["store"] is None:
+        print(f"[{state['date']}] check_technical_signals: store is None")
         return
     
     bars = state["store"].get_day_bars(state["date"])
     if bars.empty:
+        print(f"[{state['date']}] check_technical_signals: bars are empty")
+        return
+    
+    if len(bars) < 2:
+        print(f"[{state['date']}] check_technical_signals: not enough bars ({len(bars)})")
         return
     
     # Get ORB range if available
     orb_range = state.get("orb_range")
+    prev_close = state.get("prev_close")
+    
+    print(f"[{state['date']}] check_technical_signals: checking signals (bars={len(bars)}, prev_close={prev_close}, orb_range={orb_range is not None})")
     
     # Check all technical signals
-    signals = check_all_signals(bars, state["prev_close"], orb_range)
+    signals = check_all_signals(bars, prev_close, orb_range)
+    
+    print(f"[{state['date']}] check_technical_signals: found {len(signals)} signals")
     
     # Track which signals we've already sent (avoid duplicates)
     if "sent_signals" not in state:
@@ -183,7 +227,38 @@ async def check_technical_signals():
             embed = technical_signal_embed(signal)
             await send_message(embed=embed)
             state["sent_signals"].add(signal_key)
-            print(f"[{state['date']}] Technical signal: {signal.description}")
+            print(f"[{state['date']}] Technical signal sent: {signal.description}")
+        else:
+            print(f"[{state['date']}] Technical signal already sent: {signal_key}")
+
+
+async def job_sunday_report():
+    """Every Sunday at 8:00 PM — send weekly risk report."""
+    # Wait until next Sunday at 8:00 PM
+    await wait_until_next_weekday(6, time(20, 0))  # 6 = Sunday, 20:00 = 8:00 PM
+    
+    # Then run every week
+    while True:
+        try:
+            from sunday_report.sunday_report import generate_sunday_report, create_sunday_report_embed
+            
+            macro, earnings, dashboard = generate_sunday_report()
+            embed = create_sunday_report_embed(macro, earnings, dashboard)
+            
+            if embed:
+                await send_message(embed=embed)
+                print(f"[Sunday Report] Weekly report sent successfully")
+            else:
+                # Fallback to plain text
+                from sunday_report.sunday_report import format_for_discord
+                text = format_for_discord(macro, earnings, dashboard)
+                await send_message(text)
+                print(f"[Sunday Report] Weekly report sent (plain text)")
+        except Exception as e:
+            print(f"[Sunday Report] Error: {e}")
+        
+        # Wait until next Sunday at 8:00 PM
+        await wait_until_next_weekday(6, time(20, 0))
 
 
 @client.event
@@ -192,6 +267,7 @@ async def on_ready():
     asyncio.create_task(job_premarket())
     asyncio.create_task(job_orb())
     asyncio.create_task(job_scan_loop())
+    asyncio.create_task(job_sunday_report())
 
 
 if __name__ == "__main__":
