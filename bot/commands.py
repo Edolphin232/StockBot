@@ -253,12 +253,12 @@ async def handle_earnings(message: discord.Message, args: list):
     """
     Handle !earnings command - manually trigger Sunday report.
     Usage: !earnings [YYYY-MM-DD] (optional date, defaults to today)
+    Sends report to the channel where the command was issued.
     """
     await message.channel.send("📊 Generating weekly risk report...")
     
     try:
         from sunday_report.sunday_report import generate_sunday_report, create_sunday_report_embed, format_for_discord
-        from bot.discord_client import send_message as send_discord_message
         
         # Parse optional date argument
         target_date = args[0] if args else None
@@ -272,15 +272,15 @@ async def handle_earnings(message: discord.Message, args: list):
         # Generate report
         macro, earnings, dashboard = generate_sunday_report(target_date)
         
-        # Create and send embed
+        # Create and send embed to the channel where command was issued
         embed = create_sunday_report_embed(macro, earnings, dashboard)
         if embed:
-            await send_discord_message(embed=embed)
+            await message.channel.send(embed=embed)
             await message.channel.send("✅ Weekly report sent!")
         else:
             # Fallback to plain text
             text = format_for_discord(macro, earnings, dashboard)
-            await send_discord_message(text)
+            await message.channel.send(text)
             await message.channel.send("✅ Weekly report sent!")
             
     except Exception as e:
