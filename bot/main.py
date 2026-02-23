@@ -71,21 +71,33 @@ async def wait_until(target: time):
 async def wait_until_next_weekday(target_weekday: int, target_time: time):
     """
     Wait until the next occurrence of a specific weekday and time.
-    
+
     Args:
         target_weekday: 0=Monday, 6=Sunday
         target_time: time object (e.g., time(20, 0) for 8:00 PM)
     """
     now = datetime.now(EASTERN)
     days_ahead = target_weekday - now.weekday()
-    
+
     # If today is the target weekday but time has passed, or if target is earlier in week
     if days_ahead < 0 or (days_ahead == 0 and now.time() >= target_time):
         days_ahead += 7  # Move to next week
-    
+
     target_date = now.date() + timedelta(days=days_ahead)
     target_dt = EASTERN.localize(datetime.combine(target_date, target_time))
-    
+
+    delta = (target_dt - now).total_seconds()
+    if delta > 0:
+        await asyncio.sleep(delta)
+
+
+async def wait_until_next_trading_day(target_time: time):
+    """Sleep until target_time on the next weekday (skips weekends, not holidays)."""
+    now = datetime.now(EASTERN)
+    next_day = now.date() + timedelta(days=1)
+    while next_day.weekday() >= 5:  # Skip Saturday (5) and Sunday (6)
+        next_day += timedelta(days=1)
+    target_dt = EASTERN.localize(datetime.combine(next_day, target_time))
     delta = (target_dt - now).total_seconds()
     if delta > 0:
         await asyncio.sleep(delta)
@@ -112,187 +124,157 @@ async def refresh_store():
 
 
 async def job_premarket():
-    """9:45 AM — send premarket summary."""
-    await wait_until(time(9, 45))
-    
-    try:
-        await refresh_store()
-        
-        # Check if bars are available
-        if state["store"] is None:
-            error_msg = f"❌ **Premarket Error** — No data store available for {state.get('date', 'today')}"
-            await send_message(error_msg)
-            print(f"[{state.get('date', 'unknown')}] Premarket: store is None")
-            return
-        
-        bars = state["store"].get_day_bars(state["date"])
-        if bars.empty:
-            error_msg = f"⚠️ **Premarket Warning** — No bars available yet for {state['date']}. Market may not be open or data not available."
-            await send_message(error_msg)
-            print(f"[{state['date']}] Premarket: bars are empty")
-            return
+    """9:45 AM every trading day — send premarket summary."""
+    while True:
+        await wait_until(time(9, 45))
 
-        premarket = run_premarket_scan(
-            state["store"], state["date"],
-            state["prev_close"], state["vix"]
-        )
-        if premarket:
-            embed = premarket_embed(state["date"], premarket, state["vix"] or 0.0)
-            await send_message(embed=embed)
-            print(f"[{state['date']}] Premarket sent")
-        else:
-            error_msg = f"⚠️ **Premarket Warning** — Premarket scan returned None for {state['date']}"
-            await send_message(error_msg)
-            print(f"[{state['date']}] Premarket scan returned None")
+        try:
+            await refresh_store()
 
-        state["premarket_done"] = True
-    except Exception as e:
-        error_msg = f"❌ **Premarket Error** — Failed to generate premarket report: {str(e)}"
-        await send_message(error_msg)
-        print(f"[{state.get('date', 'unknown')}] Error in job_premarket: {e}")
-        import traceback
-        traceback.print_exc()
+            if state["store"] is None:
+                error_msg = f"❌ **Premarket Error** — No data store available for {state.get('date', 'today')}"
+                await send_message(error_msg)
+                print(f"[{state.get('date', 'unknown')}] Premarket: store is None")
+            else:
+                bars = state["store"].get_day_bars(state["date"])
+                if bars.empty:
+                    error_msg = f"⚠️ **Premarket Warning** — No bars available yet for {state['date']}. Market may not be open or data not available."
+                    await send_message(error_msg)
+                    print(f"[{state['date']}] Premarket: bars are empty")
+                else:
+                    premarket = run_premarket_scan(
+                        state["store"], state["date"],
+                        state["prev_close"], state["vix"]
+                    )
+                    if premarket:
+                        embed = premarket_embed(state["date"], premarket, state["vix"] or 0.0)
+                        await send_message(embed=embed)
+                        print(f"[{state['date']}] Premarket sent")
+                    else:
+                        error_msg = f"⚠️ **Premarket Warning** — Premarket scan returned None for {state['date']}"
+                        await send_message(error_msg)
+                        print(f"[{state['date']}] Premarket scan returned None")
+
+                    state["premarket_done"] = True
+        except Exception as e:
+            error_msg = f"❌ **Premarket Error** — Failed to generate premarket report: {str(e)}"
+            await send_message(error_msg)
+            print(f"[{state.get('date', 'unknown')}] Error in job_premarket: {e}")
+            import traceback
+            traceback.print_exc()
+
+        await wait_until_next_trading_day(time(9, 45))
 
 
 async def job_orb():
-    """10:00 AM — send ORB analysis."""
-    await wait_until(time(10, 0))
-    
-    try:
-        await refresh_store()
-        
-        # Check if bars are available
-        if state["store"] is None:
-            error_msg = f"❌ **ORB Error** — No data store available for {state.get('date', 'today')}"
-            await send_message(error_msg)
-            print(f"[{state.get('date', 'unknown')}] ORB: store is None")
-            return
-        
-        # Retry logic: wait for enough bars (need 30 bars = 9:30 to 10:00)
-        max_retries = 3
-        retry_delay = 30  # seconds
-        bars = None
-        
-        for attempt in range(max_retries):
-            bars = state["store"].get_day_bars(state["date"])
-            if bars.empty:
-                if attempt < max_retries - 1:
-                    print(f"[{state['date']}] ORB: bars empty, waiting {retry_delay}s (attempt {attempt + 1}/{max_retries})")
-                    await asyncio.sleep(retry_delay)
-                    await refresh_store()  # Refresh data
-                    continue
-                else:
-                    error_msg = f"⚠️ **ORB Warning** — No bars available yet for {state['date']}. Need at least 30 minutes of data for ORB calculation."
-                    await send_message(error_msg)
-                    print(f"[{state['date']}] ORB: bars are empty after {max_retries} attempts")
-                    return
-            
-            # Check if we have enough bars for ORB (need at least 30 minutes = 30 bars)
-            if len(bars) < 30:
-                if attempt < max_retries - 1:
-                    print(f"[{state['date']}] ORB: only {len(bars)} bars available, waiting {retry_delay}s for more data (attempt {attempt + 1}/{max_retries})")
-                    await asyncio.sleep(retry_delay)
-                    await refresh_store()  # Refresh data
-                    continue
-                else:
-                    error_msg = f"⚠️ **ORB Warning** — Only {len(bars)} bars available for {state['date']} after {max_retries} attempts. Need at least 30 bars (30 minutes) for ORB calculation."
-                    await send_message(error_msg)
-                    print(f"[{state['date']}] ORB: not enough bars ({len(bars)} < 30) after {max_retries} attempts")
-                    return
-            
-            # We have enough bars, break out of retry loop
-            break
+    """10:01 AM every trading day — send ORB analysis.
+    Starts at 10:01 (not 10:00) so all 30 opening-range bars are guaranteed available."""
+    while True:
+        await wait_until(time(10, 1))
 
-        orb_range, orb_result = run_orb_scan(state["store"], state["date"])
-        if orb_range and orb_result:
-            embed = orb_embed(state["date"], orb_result, orb_range)
-            await send_message(embed=embed)
-            print(f"[{state['date']}] ORB sent")
-            # Store ORB range for technical signal checks
-            state["orb_range"] = orb_range
-        else:
-            error_msg = f"⚠️ **ORB Warning** — ORB scan returned None for {state['date']}. May need more data."
-            await send_message(error_msg)
-            print(f"[{state['date']}] ORB scan returned None")
+        try:
+            await refresh_store()
 
-        state["orb_done"] = True
-    except Exception as e:
-        error_msg = f"❌ **ORB Error** — Failed to generate ORB analysis: {str(e)}"
-        await send_message(error_msg)
-        print(f"[{state.get('date', 'unknown')}] Error in job_orb: {e}")
-        import traceback
-        traceback.print_exc()
+            if state["store"] is None:
+                error_msg = f"❌ **ORB Error** — No data store available for {state.get('date', 'today')}"
+                await send_message(error_msg)
+                print(f"[{state.get('date', 'unknown')}] ORB: store is None")
+            else:
+                bars = state["store"].get_day_bars(state["date"])
+                if bars.empty or len(bars) < 30:
+                    error_msg = f"⚠️ **ORB Warning** — Only {len(bars)} bars available for {state['date']}. Need at least 30."
+                    await send_message(error_msg)
+                    print(f"[{state['date']}] ORB: not enough bars ({len(bars)} < 30)")
+                else:
+                    orb_range, orb_result = run_orb_scan(state["store"], state["date"])
+                    if orb_range and orb_result:
+                        embed = orb_embed(state["date"], orb_result, orb_range)
+                        await send_message(embed=embed)
+                        print(f"[{state['date']}] ORB sent")
+                        state["orb_range"] = orb_range
+                    else:
+                        error_msg = f"⚠️ **ORB Warning** — ORB scan returned None for {state['date']}. May need more data."
+                        await send_message(error_msg)
+                        print(f"[{state['date']}] ORB scan returned None")
+
+                    state["orb_done"] = True
+        except Exception as e:
+            error_msg = f"❌ **ORB Error** — Failed to generate ORB analysis: {str(e)}"
+            await send_message(error_msg)
+            print(f"[{state.get('date', 'unknown')}] Error in job_orb: {e}")
+            import traceback
+            traceback.print_exc()
+
+        await wait_until_next_trading_day(time(10, 1))
 
 
 async def job_scan_loop():
-    """10:00 AM → 12:00 PM — scan every minute for signal."""
-    await wait_until(time(10, 0))
-
+    """10:00 AM → 12:00 PM every trading day — scan every minute for signal."""
     while True:
-        now = datetime.now(EASTERN)
+        await wait_until(time(10, 0))
 
-        # Stop at noon
-        if now.time() >= time(12, 0):
-            await send_message("🛑 Scan window closed for today (12:00 PM)")
-            print(f"[{state['date']}] Scan window closed")
-            break
-
-        # Only fire once per day
-        if not state["signal_fired"]:
-            try:
-                await refresh_store()
-                
-                # Check if bars are available
-                if state["store"] is None:
-                    error_msg = f"❌ **Signal Scan Error** — No data store available for {state.get('date', 'today')}"
-                    await send_message(error_msg)
-                    print(f"[{state.get('date', 'unknown')}] Signal scan: store is None")
-                else:
-                    bars = state["store"].get_day_bars(state["date"])
-                    if bars.empty:
-                        # Don't spam errors - bars might not be available yet early in the day
-                        if now.time() >= time(9, 50):  # Only warn after 9:50 AM
-                            print(f"[{state['date']}] Signal scan: bars are empty (may be normal early in day)")
-                    elif len(bars) < 10:
-                        # Need at least 10 bars for signal generation
-                        print(f"[{state['date']}] Signal scan: not enough bars ({len(bars)} < 10)")
-                    else:
-                        signal = run_signal_scan(
-                            state["store"], state["date"],
-                            state["prev_close"], state["vix"]
-                        )
-                        if signal and signal.triggered:
-                            # Get bars for trigger time extraction
-                            bars = state["store"].get_day_bars(state["date"])
-                            embed = signal_embed(signal, bars=bars)
-                            await send_message(embed=embed)
-                            state["signal_fired"] = True
-                            state["technical_signals_active"] = True  # Start monitoring technical signals
-                            print(f"[{state['date']}] Signal fired: {signal.direction}")
-            except Exception as e:
-                error_msg = f"❌ **Signal Scan Error** — Failed to scan for signals: {str(e)}"
-                await send_message(error_msg)
-                print(f"[{state.get('date', 'unknown')}] Error in signal scan: {e}")
-                import traceback
-                traceback.print_exc()
-        
-        # Check technical signals only after signal fired and before 12:00 PM
-        if state.get("technical_signals_active", False):
+        # Inner loop: scan every minute until noon
+        while True:
             now = datetime.now(EASTERN)
-            if now.time() < time(12, 0):
-                await check_technical_signals()
-            else:
-                # Stop monitoring after 12:00 PM
-                state["technical_signals_active"] = False
-                print(f"[{state['date']}] Technical signal monitoring stopped (12:00 PM)")
-        else:
-            # Debug: log why technical signals aren't being checked
-            if state.get("signal_fired", False):
-                print(f"[{state['date']}] Signal fired but technical_signals_active is False")
-            else:
-                print(f"[{state['date']}] No signal fired yet, skipping technical signal check")
 
-        await asyncio.sleep(60)
+            # Stop at noon
+            if now.time() >= time(12, 0):
+                await send_message("🛑 Scan window closed for today (12:00 PM)")
+                print(f"[{state['date']}] Scan window closed")
+                break
+
+            # Only fire once per day
+            if not state["signal_fired"]:
+                try:
+                    await refresh_store()
+
+                    if state["store"] is None:
+                        error_msg = f"❌ **Signal Scan Error** — No data store available for {state.get('date', 'today')}"
+                        await send_message(error_msg)
+                        print(f"[{state.get('date', 'unknown')}] Signal scan: store is None")
+                    else:
+                        bars = state["store"].get_day_bars(state["date"])
+                        if bars.empty:
+                            if now.time() >= time(9, 50):
+                                print(f"[{state['date']}] Signal scan: bars are empty (may be normal early in day)")
+                        elif len(bars) < 10:
+                            print(f"[{state['date']}] Signal scan: not enough bars ({len(bars)} < 10)")
+                        else:
+                            signal = run_signal_scan(
+                                state["store"], state["date"],
+                                state["prev_close"], state["vix"]
+                            )
+                            if signal and signal.triggered:
+                                bars = state["store"].get_day_bars(state["date"])
+                                embed = signal_embed(signal, bars=bars)
+                                await send_message(embed=embed)
+                                state["signal_fired"] = True
+                                state["technical_signals_active"] = True
+                                print(f"[{state['date']}] Signal fired: {signal.direction}")
+                except Exception as e:
+                    error_msg = f"❌ **Signal Scan Error** — Failed to scan for signals: {str(e)}"
+                    await send_message(error_msg)
+                    print(f"[{state.get('date', 'unknown')}] Error in signal scan: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+            # Check technical signals only after signal fired and before 12:00 PM
+            if state.get("technical_signals_active", False):
+                now = datetime.now(EASTERN)
+                if now.time() < time(12, 0):
+                    await check_technical_signals()
+                else:
+                    state["technical_signals_active"] = False
+                    print(f"[{state['date']}] Technical signal monitoring stopped (12:00 PM)")
+            else:
+                if state.get("signal_fired", False):
+                    print(f"[{state['date']}] Signal fired but technical_signals_active is False")
+                else:
+                    print(f"[{state['date']}] No signal fired yet, skipping technical signal check")
+
+            await asyncio.sleep(60)
+
+        await wait_until_next_trading_day(time(10, 0))
 
 
 async def check_technical_signals():
