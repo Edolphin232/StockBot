@@ -198,6 +198,72 @@ def exit_embed(exit_signal, position) -> discord.Embed:
     return embed
 
 
+def longterm_embed(
+    ticker: str,
+    price: float,
+    day_change_pct: float,
+    ytd_pct: float | None,
+    high_52w: float,
+    low_52w: float,
+    range_pct: float,
+    ma50: float | None,
+    vs_ma50: float | None,
+    ma200: float | None,
+    vs_ma200: float | None,
+    cross: str | None,
+    daily_rsi: float | None,
+    weekly_rsi: float | None,
+    verdict: str,
+) -> discord.Embed:
+    color = discord.Color.green() if "BULLISH" in verdict else \
+            discord.Color.red()   if "BEARISH" in verdict else \
+            discord.Color.gold()
+
+    day_emoji = "📈" if day_change_pct >= 0 else "📉"
+
+    embed = discord.Embed(
+        title=f"📊 Long-Term Analysis — {ticker}",
+        color=color,
+    )
+
+    embed.add_field(name="Price", value=f"${price:.2f} ({day_emoji} {day_change_pct:+.2f}%)", inline=True)
+
+    if ytd_pct is not None:
+        embed.add_field(name="YTD", value=f"{ytd_pct:+.2f}%", inline=True)
+    else:
+        embed.add_field(name="YTD", value="N/A", inline=True)
+
+    embed.add_field(
+        name="52-Wk Range",
+        value=f"${low_52w:.2f} — ${high_52w:.2f}  ({range_pct:.0f}%ile)",
+        inline=True,
+    )
+
+    if ma50 is not None and vs_ma50 is not None:
+        icon = "✅" if vs_ma50 >= 0 else "❌"
+        embed.add_field(name="vs 50-DMA", value=f"{icon} {vs_ma50:+.2f}%  (${ma50:.2f})", inline=True)
+
+    if ma200 is not None and vs_ma200 is not None:
+        icon = "✅" if vs_ma200 >= 0 else "❌"
+        embed.add_field(name="vs 200-DMA", value=f"{icon} {vs_ma200:+.2f}%  (${ma200:.2f})", inline=True)
+
+    if cross is not None:
+        cross_icon = "✨" if cross == "Golden" else "💀"
+        embed.add_field(name="MA Cross", value=f"{cross_icon} {cross} Cross", inline=True)
+
+    if daily_rsi is not None:
+        note = "  ⚠️ Overbought" if daily_rsi > 70 else "  ⚠️ Oversold" if daily_rsi < 30 else ""
+        embed.add_field(name="RSI (14d)", value=f"{daily_rsi:.1f}{note}", inline=True)
+
+    if weekly_rsi is not None:
+        note = "  ⚠️ Overbought" if weekly_rsi > 70 else "  ⚠️ Oversold" if weekly_rsi < 30 else ""
+        embed.add_field(name="RSI (14w)", value=f"{weekly_rsi:.1f}{note}", inline=True)
+
+    embed.add_field(name="Verdict", value=verdict, inline=False)
+
+    return embed
+
+
 def technical_signal_embed(signal) -> discord.Embed:
     """
     Create a Discord embed for technical signal notifications.

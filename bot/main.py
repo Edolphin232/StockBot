@@ -21,7 +21,7 @@ from bot.scanner import (
     run_orb_scan,
     run_signal_scan,
 )
-from bot.commands import handle_testspy, handle_earnings
+from bot.commands import handle_testspy, handle_earnings, handle_longterm
 from strategy.technical_signals import check_all_signals, TechnicalSignal
 
 EASTERN = pytz.timezone("US/Eastern")
@@ -57,6 +57,10 @@ async def on_message(message: discord.Message):
         args = message.content.split()[1:]
         print(f"[Discord] Handling !earnings command with args: {args}")
         await handle_earnings(message, args)
+    elif message.content.startswith("!longterm"):
+        args = message.content.split()[1:]
+        print(f"[Discord] Handling !longterm command with args: {args}")
+        await handle_longterm(message, args)
 
 async def wait_until(target: time):
     """Sleep until a specific Eastern time today."""

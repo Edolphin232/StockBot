@@ -15,7 +15,7 @@ from filters.premarket_filter import run_premarket_filter
 from calculators.orb import calculate_opening_range, detect_breakout
 from strategy.signal_generator import generate_signal
 from strategy.technical_signals import check_all_signals, TechnicalSignal
-from bot.discord_client import premarket_embed, orb_embed, signal_embed, technical_signal_embed
+from bot.discord_client import premarket_embed, orb_embed, signal_embed, technical_signal_embed, longterm_embed
 
 EASTERN = pytz.timezone("US/Eastern")
 
@@ -377,5 +377,138 @@ async def handle_earnings(message: discord.Message, args: list):
     except Exception as e:
         await message.channel.send(f"❌ Error: {e}")
         print(f"[!earnings] Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def handle_longterm(message: discord.Message, args: list):
+    """
+    Handle !longterm TICKER command.
+    Fetches 1y daily + 2y weekly bars and produces a long-term trend snapshot:
+      - Price vs 50/200-DMA, golden/death cross
+      - Daily RSI(14) and weekly RSI(14)
+      - 52-week range percentile
+      - YTD return
+      - Overall trend verdict
+    """
+    if not args:
+        await message.channel.send("❌ Usage: `!longterm TICKER`")
+        return
+
+    ticker = args[0].upper().strip()
+    await message.channel.send(f"🔍 Analyzing **{ticker}** for long-term holding...")
+
+    try:
+        import numpy as np
+        from datetime import date, timedelta
+        from calculators.rsi import calculate_rsi
+
+        today = date.today()
+        end_str   = today.strftime("%Y-%m-%d")
+        start_1y  = (today - timedelta(days=365)).strftime("%Y-%m-%d")
+        start_2y  = (today - timedelta(days=730)).strftime("%Y-%m-%d")
+
+        daily  = yf_fetch(ticker, start_1y, end_str, timeframe="1d")
+        weekly = yf_fetch(ticker, start_2y, end_str, timeframe="1wk")
+
+        if daily is None or daily.empty:
+            await message.channel.send(f"❌ No data found for **{ticker}**. Check the ticker symbol.")
+            return
+
+        closes = daily["close"]
+        current_price  = float(closes.iloc[-1])
+        prev_close_val = float(closes.iloc[-2]) if len(closes) > 1 else current_price
+        day_change_pct = (current_price - prev_close_val) / prev_close_val * 100
+
+        # 52-week high/low and percentile
+        high_52w  = float(daily["high"].max())
+        low_52w   = float(daily["low"].min())
+        range_pct = (current_price - low_52w) / (high_52w - low_52w) * 100 if high_52w != low_52w else 50.0
+
+        # YTD return — find first bar of the calendar year
+        ytd_pct = None
+        if hasattr(daily.index, "year"):
+            ytd_bars = daily[daily.index.year == today.year]
+            if not ytd_bars.empty:
+                ytd_open = float(ytd_bars.iloc[0]["open"])
+                ytd_pct = (current_price - ytd_open) / ytd_open * 100
+
+        # 50-DMA and 200-DMA
+        ma50_series  = closes.rolling(50).mean()
+        ma200_series = closes.rolling(200).mean()
+
+        ma50  = float(ma50_series.iloc[-1])  if len(closes) >= 50  and not np.isnan(ma50_series.iloc[-1])  else None
+        ma200 = float(ma200_series.iloc[-1]) if len(closes) >= 200 and not np.isnan(ma200_series.iloc[-1]) else None
+
+        vs_ma50  = (current_price - ma50)  / ma50  * 100 if ma50  else None
+        vs_ma200 = (current_price - ma200) / ma200 * 100 if ma200 else None
+
+        # Golden / Death cross
+        cross = None
+        if ma50 is not None and ma200 is not None:
+            cross = "Golden" if ma50 > ma200 else "Death"
+
+        # Daily RSI(14)
+        daily_rsi = None
+        if len(daily) > 15:
+            rsi_s = calculate_rsi(daily, period=14)
+            if not rsi_s.empty and not np.isnan(rsi_s.iloc[-1]):
+                daily_rsi = float(rsi_s.iloc[-1])
+
+        # Weekly RSI(14)
+        weekly_rsi = None
+        if weekly is not None and not weekly.empty and len(weekly) > 15:
+            rsi_s = calculate_rsi(weekly, period=14)
+            if not rsi_s.empty and not np.isnan(rsi_s.iloc[-1]):
+                weekly_rsi = float(rsi_s.iloc[-1])
+
+        # --- Verdict scoring ---
+        bullish = bearish = 0
+
+        if ma50 is not None:
+            if current_price > ma50:  bullish += 1
+            else:                     bearish += 1
+
+        if ma200 is not None:
+            if current_price > ma200: bullish += 1
+            else:                     bearish += 1
+
+        if cross == "Golden":  bullish += 1
+        elif cross == "Death": bearish += 1
+
+        if weekly_rsi is not None:
+            if 30 <= weekly_rsi <= 65: bullish += 1   # healthy uptrend range
+            elif weekly_rsi > 70:      bearish += 1   # overbought — caution
+
+        if range_pct >= 60:   bullish += 1
+        elif range_pct <= 40: bearish += 1
+
+        score = bullish - bearish
+        if score >= 2:    verdict = "🟢 BULLISH"
+        elif score <= -2: verdict = "🔴 BEARISH"
+        else:             verdict = "🟡 NEUTRAL"
+
+        embed = longterm_embed(
+            ticker=ticker,
+            price=current_price,
+            day_change_pct=day_change_pct,
+            ytd_pct=ytd_pct,
+            high_52w=high_52w,
+            low_52w=low_52w,
+            range_pct=range_pct,
+            ma50=ma50,
+            vs_ma50=vs_ma50,
+            ma200=ma200,
+            vs_ma200=vs_ma200,
+            cross=cross,
+            daily_rsi=daily_rsi,
+            weekly_rsi=weekly_rsi,
+            verdict=verdict,
+        )
+        await message.channel.send(embed=embed)
+
+    except Exception as e:
+        await message.channel.send(f"❌ Error analyzing **{ticker}**: {e}")
+        print(f"[!longterm] Error: {e}")
         import traceback
         traceback.print_exc()
